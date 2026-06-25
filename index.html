@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PDF 工具箱 - 在线PDF处理 | 合并/分割/压缩/转换</title>
-  <meta name="description" content="免费在线PDF工具：合并PDF、分割PDF、压缩PDF、图片转PDF、PDF转图片。纯本地处理，文件不上传，安全快速。">
+  <meta name="description" content="免费在线PDF工具：合并、分割、压缩、旋转、水印、排序、加密、图片转PDF、PDF转图片。纯本地处理，文件不上传，安全快速。">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
@@ -305,6 +305,121 @@
     .page-preview canvas.selected {
       border-color: #667eea;
     }
+    .page-preview canvas.rotated {
+      border-color: #ff6b6b;
+      transform: rotate(90deg);
+    }
+
+    .page-thumb {
+      position: relative;
+      display: inline-block;
+      cursor: grab;
+      margin: 4px;
+      border: 2px solid transparent;
+      border-radius: 4px;
+      transition: transform 0.15s;
+    }
+    .page-thumb:active { cursor: grabbing; }
+    .page-thumb.drag-over { border-color: #667eea; transform: scale(1.05); }
+    .page-thumb canvas {
+      display: block;
+      max-width: 120px;
+      height: auto;
+      border-radius: 2px;
+    }
+    .page-thumb .page-number {
+      position: absolute;
+      bottom: 4px;
+      left: 4px;
+      background: rgba(0,0,0,0.7);
+      color: #fff;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    /* PDF转Word 高级功能卡片 */
+    .tool-card.premium {
+      position: relative;
+      border: 2px solid transparent;
+      background: rgba(255,255,255,0.03);
+      background-clip: padding-box;
+    }
+    .tool-card.premium::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border-radius: 14px;
+      padding: 2px;
+      background: linear-gradient(135deg, #667eea, #e94560);
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      z-index: -1;
+    }
+    .premium-tag {
+      display: inline-block;
+      background: linear-gradient(135deg, #667eea, #e94560);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* 支持项目区块 */
+    .support-section {
+      text-align: center;
+      padding: 48px 20px;
+      margin-bottom: 40px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+    }
+    .support-section h2 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .support-section .support-desc {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .support-qrcodes {
+      display: flex;
+      justify-content: center;
+      gap: 48px;
+      flex-wrap: wrap;
+    }
+    .support-qr-item {
+      text-align: center;
+    }
+    .support-qr-placeholder {
+      width: 160px;
+      height: 160px;
+      background: rgba(255,255,255,0.05);
+      border: 2px dashed rgba(255,255,255,0.15);
+      border-radius: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 10px;
+      color: #555;
+      font-size: 12px;
+    }
+    .support-qr-placeholder .qr-icon {
+      font-size: 36px;
+      margin-bottom: 8px;
+    }
+    .support-qr-item span {
+      font-size: 13px;
+      color: #888;
+    }
 
     .footer {
       text-align: center;
@@ -323,7 +438,7 @@
     <span class="header-tagline">纯本地处理 · 文件不上传</span>
   </div>
   <div class="header-right">
-    <a class="github-link" href="https://github.com/Zwei12310/snapmark-chrome-extension" target="_blank">GitHub</a>
+    <a class="github-link" href="https://github.com/Zwei12310/pdf-toolbox" target="_blank">GitHub</a>
   </div>
 </header>
 
@@ -359,6 +474,32 @@
       <div class="tool-icon">📄</div>
       <h3>PDF 转图片</h3>
       <p>每页转为 PNG 图片</p>
+    </div>
+    <div class="tool-card" data-tool="rotate">
+      <div class="tool-icon">🔄</div>
+      <h3>页面旋转</h3>
+      <p>旋转 PDF 中的指定页面</p>
+    </div>
+    <div class="tool-card" data-tool="watermark">
+      <div class="tool-icon">💧</div>
+      <h3>添加水印</h3>
+      <p>文字或图片水印</p>
+    </div>
+    <div class="tool-card" data-tool="reorder">
+      <div class="tool-icon">🔀</div>
+      <h3>页面排序</h3>
+      <p>拖拽调整页面顺序</p>
+    </div>
+    <div class="tool-card" data-tool="encrypt">
+      <div class="tool-icon">🔒</div>
+      <h3>PDF 加密</h3>
+      <p>设置打开密码保护</p>
+    </div>
+    <div class="tool-card premium" data-tool="pdf2word">
+      <div class="premium-tag">高级功能</div>
+      <div class="tool-icon">📝</div>
+      <h3>PDF 转 Word</h3>
+      <p>将 PDF 转换为可编辑的 Word 文档</p>
     </div>
   </div>
 
@@ -498,12 +639,179 @@
       <div class="result-info" id="resultInfo-pdf2img"></div>
     </div>
   </div>
+  <!-- 工作区 - 页面旋转 -->
+  <div class="workspace" id="workspace-rotate">
+    <div class="ws-title">页面旋转</div>
+    <div class="ws-desc">选择一个 PDF，点击页面预览即可顺时针旋转 90 度。</div>
+    <div class="upload-zone" id="dropZone-rotate">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-rotate" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-rotate"></div>
+    <div class="page-preview" id="pagePreview-rotate"></div>
+    <div class="progress-bar" id="progress-rotate"><div class="progress-fill" id="progressFill-rotate" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnRotate" disabled>应用旋转并下载</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-rotate">
+      <div class="result-icon">🎉</div>
+      <div>旋转完成！</div>
+      <div class="result-info" id="resultInfo-rotate"></div>
+    </div>
+  </div>
 
+  <!-- 工作区 - 添加水印 -->
+  <div class="workspace" id="workspace-watermark">
+    <div class="ws-title">添加水印</div>
+    <div class="ws-desc">在 PDF 每一页上添加文字水印或图片水印。</div>
+    <div class="upload-zone" id="dropZone-watermark">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-watermark" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-watermark"></div>
+    <div class="settings-row">
+      <label>水印类型：</label>
+      <select id="watermarkType" style="background:#1a1a2e;color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;">
+        <option value="text">文字水印</option>
+        <option value="image">图片水印</option>
+      </select>
+    </div>
+    <div class="settings-row" id="wmTextRow">
+      <label>水印文字：</label>
+      <input type="text" id="watermarkText" value="机密" style="width:200px;">
+      <label>字号：</label>
+      <input type="range" id="watermarkFontSize" min="12" max="120" value="48" style="width:120px;">
+      <span style="font-size:13px;color:#888;">48px</span>
+    </div>
+    <div class="settings-row" id="wmImageRow" style="display:none;">
+      <label>水印图片：</label>
+      <input type="file" id="watermarkImageInput" accept="image/*" style="background:rgba(255,255,255,0.05);color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:4px 8px;font-size:13px;">
+    </div>
+    <div class="settings-row">
+      <label>透明度：</label>
+      <input type="range" id="watermarkOpacity" min="5" max="80" value="20" style="width:120px;">
+      <span id="watermarkOpacityLabel" style="font-size:13px;color:#888;">20%</span>
+    </div>
+    <div class="settings-row">
+      <label>旋转角度：</label>
+      <select id="watermarkAngle" style="background:#1a1a2e;color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;">
+        <option value="45">45°（对角线）</option>
+        <option value="0">0°（水平）</option>
+        <option value="-45">-45°（反斜线）</option>
+        <option value="30">30°</option>
+      </select>
+    </div>
+    <div class="progress-bar" id="progress-watermark"><div class="progress-fill" id="progressFill-watermark" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnWatermark" disabled>添加水印并下载</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-watermark">
+      <div class="result-icon">🎉</div>
+      <div>水印添加完成！</div>
+      <div class="result-info" id="resultInfo-watermark"></div>
+    </div>
+  </div>
+
+  <!-- 工作区 - 页面排序 -->
+  <div class="workspace" id="workspace-reorder">
+    <div class="ws-title">页面排序</div>
+    <div class="ws-desc">选择一个 PDF，拖拽页面缩略图调整顺序后导出。</div>
+    <div class="upload-zone" id="dropZone-reorder">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-reorder" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-reorder"></div>
+    <div class="page-preview" id="pagePreview-reorder" style="flex-wrap:wrap;"></div>
+    <div class="settings-row" style="color:#888;font-size:12px;">提示：拖拽页面缩略图可调整顺序</div>
+    <div class="progress-bar" id="progress-reorder"><div class="progress-fill" id="progressFill-reorder" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnReorder" disabled>按新顺序导出</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-reorder">
+      <div class="result-icon">🎉</div>
+      <div>排序完成！</div>
+      <div class="result-info" id="resultInfo-reorder"></div>
+    </div>
+  </div>
+
+  <!-- 工作区 - PDF 加密 -->
+  <div class="workspace" id="workspace-encrypt">
+    <div class="ws-title">PDF 加密</div>
+    <div class="ws-desc">为 PDF 文件设置打开密码，保护文档安全。</div>
+    <div class="upload-zone" id="dropZone-encrypt">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-encrypt" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-encrypt"></div>
+    <div class="settings-row">
+      <label>打开密码：</label>
+      <input type="password" id="encryptPassword" placeholder="请输入密码" style="width:200px;">
+    </div>
+    <div class="settings-row">
+      <label>确认密码：</label>
+      <input type="password" id="encryptPasswordConfirm" placeholder="再次输入密码" style="width:200px;">
+    </div>
+    <div class="progress-bar" id="progress-encrypt"><div class="progress-fill" id="progressFill-encrypt" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnEncrypt" disabled>加密并下载</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-encrypt">
+      <div class="result-icon">🎉</div>
+      <div>加密完成！</div>
+      <div class="result-info" id="resultInfo-encrypt"></div>
+    </div>
+  </div>
+
+  <!-- 工作区 - PDF 转 Word -->
+  <div class="workspace" id="workspace-pdf2word">
+    <div class="ws-title">PDF 转 Word</div>
+    <div class="ws-desc">将 PDF 文档转换为可编辑的 Word 文档（.doc），保留文本内容和基本排版。</div>
+    <div class="upload-zone" id="dropZone-pdf2word">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-pdf2word" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-pdf2word"></div>
+    <div class="progress-bar" id="progress-pdf2word"><div class="progress-fill" id="progressFill-pdf2word" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnPdf2Word" disabled>开始转换</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-pdf2word">
+      <div class="result-icon">🎉</div>
+      <div>转换完成！</div>
+      <div class="result-info" id="resultInfo-pdf2word"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="support-section">
+  <h2>支持项目 / Support</h2>
+  <p class="support-desc">如果这个工具帮到了你，欢迎支持我们继续开发</p>
+  <div class="support-qrcodes">
+    <div class="support-qr-item">
+      <img src="images/wechat-qr.png" alt="微信赞赏码" style="width:160px;height:160px;border-radius:10px;" onerror="this.parentElement.innerHTML='<div class=\'support-qr-placeholder\'><div class=\'qr-icon\'>💚</div><div>微信赞赏码</div><div style=\'margin-top:4px;font-size:10px;\'>请放入 images/wechat-qr.png</div></div><span>微信赞赏码</span>'">
+      <span>微信赞赏码</span>
+    </div>
+    <div class="support-qr-item">
+      <img src="images/alipay-qr.png" alt="支付宝收款码" style="width:160px;height:160px;border-radius:10px;" onerror="this.parentElement.innerHTML='<div class=\'support-qr-placeholder\'><div class=\'qr-icon\'>💙</div><div>支付宝收款码</div><div style=\'margin-top:4px;font-size:10px;\'>请放入 images/alipay-qr.png</div></div><span>支付宝收款码</span>'">
+      <span>支付宝收款码</span>
+    </div>
+  </div>
 </div>
 
 <footer class="footer">
   <p>所有文件处理均在您的浏览器本地完成，不会上传至任何服务器。</p>
-  <p><a href="https://github.com/Zwei12310/snapmark-chrome-extension">GitHub</a> · Built with PDF.js & pdf-lib</p>
+  <p><a href="https://github.com/Zwei12310/pdf-toolbox">GitHub</a> · Built with PDF.js & pdf-lib</p>
 </footer>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
