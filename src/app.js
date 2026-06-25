@@ -41,6 +41,10 @@ document.querySelectorAll('.tool-card').forEach(card => {
 });
 
 function openTool(tool) {
+  if (tool === 'pdf2word') {
+    alert('功能开发中，即将上线');
+    return;
+  }
   currentTool = tool;
   document.getElementById('toolsGrid').style.display = 'none';
   document.querySelectorAll('.workspace').forEach(w => w.classList.remove('active'));
@@ -65,7 +69,9 @@ function resetTool(tool) {
   // 重置按钮
   const btnMap = {
     merge: 'btnMerge', split: 'btnSplit', compress: 'btnCompress',
-    img2pdf: 'btnImg2Pdf', pdf2img: 'btnPdf2Img'
+    img2pdf: 'btnImg2Pdf', pdf2img: 'btnPdf2Img',
+    rotate: 'btnRotate', watermark: 'btnWatermark',
+    reorder: 'btnReorder', encrypt: 'btnEncrypt'
   };
   const btn = document.getElementById(btnMap[tool]);
   if (btn) btn.disabled = true;
@@ -546,7 +552,6 @@ function renderFileList(tool, files, onRemove, onReorder) {
         downloadDataUrl(canvas.toDataURL('image/png'), `${baseName}-page${i}.png`);
 
         fill.style.width = (i / totalPages * 100) + '%';
-        // 小延迟避免下载被浏览器拦截
         await new Promise(r => setTimeout(r, 200));
       }
 
@@ -558,5 +563,286 @@ function renderFileList(tool, files, onRemove, onReorder) {
       btn.disabled = false;
       progress.classList.remove('show');
     }
+  });
+})();
+
+// ==================== 6. 页面旋转 ====================
+
+(function() {
+  let rotateFile = null;
+  let rotatePdfDoc = null;
+  let rotations = {};
+
+  setupFileInput('rotate', '.pdf', false, async (files) => {
+    rotateFile = files[0];
+    rotations = {};
+    renderFileList('rotate', [rotateFile], (idx) => { rotateFile = null; document.getElementById('fileList-rotate').innerHTML = ''; rotations = {}; document.getElementById('btnRotate').disabled = true; });
+    document.getElementById('btnRotate').disabled = true;
+    document.getElementById('pagePreview-rotate').innerHTML = '';
+
+    const arr = await rotateFile.arrayBuffer();
+    rotatePdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
+    const preview = document.getElementById('pagePreview-rotate');
+
+    for (let i = 1; i <= rotatePdfDoc.numPages; i++) {
+      const page = await rotatePdfDoc.getPage(i);
+      const scale = 0.25;
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.dataset.page = i;
+      canvas.title = '第 ' + i + ' 页（点击旋转 90°）';
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      canvas.addEventListener('click', () => {
+        rotations[i] = ((rotations[i] || 0) + 90) % 360;
+        if (rotations[i] === 0) {
+          canvas.classList.remove('rotated');
+          canvas.style.transform = '';
+          delete rotations[i];
+        } else {
+          canvas.classList.add('rotated');
+          canvas.style.transform = 'rotate(' + rotations[i] + 'deg)';
+        }
+        document.getElementById('btnRotate').disabled = Object.keys(rotations).length === 0;
+      });
+      preview.appendChild(canvas);
+    }
+  });
+
+  document.getElementById('btnRotate').addEventListener('click', async () => {
+    if (!rotateFile || Object.keys(rotations).length === 0) return;
+    const btn = document.getElementById('btnRotate');
+    const progress = document.getElementById('progress-rotate');
+    const fill = document.getElementById('progressFill-rotate');
+    const result = document.getElementById('result-rotate');
+    const info = document.getElementById('resultInfo-rotate');
+    btn.disabled = true;
+    progress.classList.add('show');
+    fill.style.width = '0%';
+    try {
+      const arr = await rotateFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const totalPages = srcPdf.getPageCount();
+      const newPdf = await PDFLib.PDFDocument.create();
+      const copiedPages = await newPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+      copiedPages.forEach((p, i) => {
+        const deg = rotations[i + 1] || 0;
+        if (deg) p.setRotation(PDFLib.degrees(deg));
+        newPdf.addPage(p);
+      });
+      fill.style.width = '100%';
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      const cnt = Object.keys(rotations).length;
+      result.classList.add('show');
+      info.innerHTML = '已旋转 ' + cnt + ' 页（共 ' + totalPages + ' 页），输出 ' + formatSize(blob.size);
+      downloadBlob(blob, 'rotated.pdf');
+    } catch (err) { alert('旋转失败：' + err.message); }
+    finally { btn.disabled = false; progress.classList.remove('show'); }
+  });
+})();
+
+// ==================== 7. 添加水印 ====================
+
+(function() {
+  let watermarkFile = null;
+  let watermarkImageData = null;
+
+  document.getElementById('watermarkType').addEventListener('change', (e) => {
+    const isText = e.target.value === 'text';
+    document.getElementById('wmTextRow').style.display = isText ? '' : 'none';
+    document.getElementById('wmImageRow').style.display = isText ? 'none' : '';
+  });
+  document.getElementById('watermarkFontSize').addEventListener('input', (e) => {
+    e.target.nextElementSibling.textContent = e.target.value + 'px';
+  });
+  document.getElementById('watermarkOpacity').addEventListener('input', (e) => {
+    document.getElementById('watermarkOpacityLabel').textContent = e.target.value + '%';
+  });
+  document.getElementById('watermarkImageInput').addEventListener('change', async (e) => {
+    if (e.target.files[0]) {
+      const reader = new FileReader();
+      reader.onload = () => { watermarkImageData = reader.result; };
+      reader.readAsDataURL(e.target.files[0]);
+    }
+  });
+
+  setupFileInput('watermark', '.pdf', false, (files) => {
+    watermarkFile = files[0];
+    renderFileList('watermark', [watermarkFile], (idx) => { watermarkFile = null; document.getElementById('fileList-watermark').innerHTML = ''; document.getElementById('btnWatermark').disabled = true; });
+    document.getElementById('btnWatermark').disabled = false;
+  });
+
+  document.getElementById('btnWatermark').addEventListener('click', async () => {
+    if (!watermarkFile) return;
+    const type = document.getElementById('watermarkType').value;
+    if (type === 'image' && !watermarkImageData) { alert('请先选择水印图片'); return; }
+    const btn = document.getElementById('btnWatermark');
+    const progress = document.getElementById('progress-watermark');
+    const fill = document.getElementById('progressFill-watermark');
+    const result = document.getElementById('result-watermark');
+    const info = document.getElementById('resultInfo-watermark');
+    btn.disabled = true; progress.classList.add('show'); fill.style.width = '0%';
+    try {
+      const arr = await watermarkFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const totalPages = srcPdf.getPageCount();
+      const newPdf = await PDFLib.PDFDocument.create();
+      const copiedPages = await newPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+      const opacity = parseInt(document.getElementById('watermarkOpacity').value) / 100;
+      const angle = parseInt(document.getElementById('watermarkAngle').value);
+      const angleRad = PDFLib.degrees(angle);
+      let wmImg = null;
+      if (type === 'image' && watermarkImageData) {
+        const imgBytes = Uint8Array.from(atob(watermarkImageData.split(',')[1]), c => c.charCodeAt(0));
+        try { wmImg = await newPdf.embedPng(imgBytes); } catch { wmImg = await newPdf.embedJpg(imgBytes); }
+      }
+      for (let i = 0; i < copiedPages.length; i++) {
+        const pg = newPdf.addPage(copiedPages[i]);
+        const pw = pg.getWidth(), ph = pg.getHeight();
+        if (type === 'text') {
+          const text = document.getElementById('watermarkText').value;
+          const fs = parseInt(document.getElementById('watermarkFontSize').value);
+          pg.drawText(text, { x: pw / 2 - (text.length * fs * 0.35), y: ph / 2, size: fs, opacity: opacity, rotate: angleRad, color: PDFLib.rgb(0.4, 0.4, 0.4) });
+        } else if (wmImg) {
+          const iw = pw * 0.4, ih = iw * (wmImg.height / wmImg.width);
+          pg.drawImage(wmImg, { x: pw / 2 - iw / 2, y: ph / 2 - ih / 2, width: iw, height: ih, opacity: opacity, rotate: angleRad });
+        }
+        fill.style.width = ((i + 1) / copiedPages.length * 100) + '%';
+      }
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      result.classList.add('show');
+      info.innerHTML = '已为 ' + totalPages + ' 页添加水印，输出 ' + formatSize(blob.size);
+      downloadBlob(blob, 'watermarked.pdf');
+    } catch (err) { alert('添加水印失败：' + err.message); }
+    finally { btn.disabled = false; progress.classList.remove('show'); }
+  });
+})();
+
+// ==================== 8. 页面排序 ====================
+
+(function() {
+  let reorderFile = null;
+  let dragSrc = null;
+
+  setupFileInput('reorder', '.pdf', false, async (files) => {
+    reorderFile = files[0];
+    renderFileList('reorder', [reorderFile], (idx) => { reorderFile = null; document.getElementById('fileList-reorder').innerHTML = ''; document.getElementById('btnReorder').disabled = true; });
+    document.getElementById('btnReorder').disabled = true;
+    const preview = document.getElementById('pagePreview-reorder');
+    preview.innerHTML = '';
+    const arr = await reorderFile.arrayBuffer();
+    const pdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
+    for (let i = 1; i <= pdfDoc.numPages; i++) {
+      const page = await pdfDoc.getPage(i);
+      const scale = 0.25;
+      const viewport = page.getViewport({ scale });
+      const c = document.createElement('canvas');
+      c.width = viewport.width; c.height = viewport.height;
+      const ctx = c.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      const thumb = document.createElement('div');
+      thumb.className = 'page-thumb';
+      thumb.draggable = true;
+      thumb.dataset.id = i;
+      const innerC = document.createElement('canvas');
+      innerC.width = c.width; innerC.height = c.height;
+      innerC.getContext('2d').drawImage(c, 0, 0);
+      const label = document.createElement('span');
+      label.className = 'page-number';
+      label.textContent = i;
+      thumb.appendChild(innerC);
+      thumb.appendChild(label);
+      thumb.addEventListener('dragstart', (e) => { dragSrc = thumb; e.dataTransfer.effectAllowed = 'move'; thumb.style.opacity = '0.4'; });
+      thumb.addEventListener('dragend', () => { thumb.style.opacity = '1'; preview.querySelectorAll('.page-thumb').forEach(t => t.classList.remove('drag-over')); dragSrc = null; });
+      thumb.addEventListener('dragover', (e) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; thumb.classList.add('drag-over'); });
+      thumb.addEventListener('dragleave', () => thumb.classList.remove('drag-over'));
+      thumb.addEventListener('drop', (e) => {
+        e.preventDefault(); thumb.classList.remove('drag-over');
+        if (dragSrc !== thumb) {
+          const children = [...preview.children];
+          const toIdx = children.indexOf(thumb);
+          if (children.indexOf(dragSrc) < toIdx) preview.insertBefore(dragSrc, thumb.nextSibling);
+          else preview.insertBefore(dragSrc, thumb);
+          document.getElementById('btnReorder').disabled = false;
+        }
+      });
+      preview.appendChild(thumb);
+    }
+    document.getElementById('btnReorder').disabled = false;
+  });
+
+  document.getElementById('btnReorder').addEventListener('click', async () => {
+    if (!reorderFile) return;
+    const btn = document.getElementById('btnReorder');
+    const progress = document.getElementById('progress-reorder');
+    const fill = document.getElementById('progressFill-reorder');
+    const result = document.getElementById('result-reorder');
+    const info = document.getElementById('resultInfo-reorder');
+    btn.disabled = true; progress.classList.add('show'); fill.style.width = '0%';
+    try {
+      const arr = await reorderFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const newPdf = await PDFLib.PDFDocument.create();
+      const preview = document.getElementById('pagePreview-reorder');
+      const newOrder = [...preview.querySelectorAll('.page-thumb')].map(t => parseInt(t.dataset.id) - 1);
+      const copiedPages = await newPdf.copyPages(srcPdf, newOrder);
+      copiedPages.forEach(p => newPdf.addPage(p));
+      fill.style.width = '100%';
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      result.classList.add('show');
+      info.innerHTML = '已按新顺序排列 ' + newOrder.length + ' 页，输出 ' + formatSize(blob.size);
+      downloadBlob(blob, 'reordered.pdf');
+    } catch (err) { alert('排序失败：' + err.message); }
+    finally { btn.disabled = false; progress.classList.remove('show'); }
+  });
+})();
+
+// ==================== 9. PDF 加密 ====================
+
+(function() {
+  let encryptFile = null;
+
+  document.getElementById('encryptPassword').addEventListener('input', updateEncryptBtn);
+  document.getElementById('encryptPasswordConfirm').addEventListener('input', updateEncryptBtn);
+  function updateEncryptBtn() {
+    const pw = document.getElementById('encryptPassword').value;
+    const pw2 = document.getElementById('encryptPasswordConfirm').value;
+    document.getElementById('btnEncrypt').disabled = !encryptFile || !pw || pw !== pw2;
+  }
+
+  setupFileInput('encrypt', '.pdf', false, (files) => {
+    encryptFile = files[0];
+    renderFileList('encrypt', [encryptFile], (idx) => { encryptFile = null; document.getElementById('fileList-encrypt').innerHTML = ''; document.getElementById('btnEncrypt').disabled = true; });
+    updateEncryptBtn();
+  });
+
+  document.getElementById('btnEncrypt').addEventListener('click', async () => {
+    if (!encryptFile) return;
+    const pw = document.getElementById('encryptPassword').value;
+    const pw2 = document.getElementById('encryptPasswordConfirm').value;
+    if (pw !== pw2) { alert('两次输入的密码不一致'); return; }
+    const btn = document.getElementById('btnEncrypt');
+    const progress = document.getElementById('progress-encrypt');
+    const fill = document.getElementById('progressFill-encrypt');
+    const result = document.getElementById('result-encrypt');
+    const info = document.getElementById('resultInfo-encrypt');
+    btn.disabled = true; progress.classList.add('show'); fill.style.width = '0%';
+    try {
+      const arr = await encryptFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const bytes = await srcPdf.save({ userPassword: pw, ownerPassword: pw + '_owner' });
+      fill.style.width = '100%';
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      result.classList.add('show');
+      info.innerHTML = '已加密，打开时需要输入密码';
+      downloadBlob(blob, 'encrypted.pdf');
+    } catch (err) { alert('加密失败：' + err.message); }
+    finally { btn.disabled = false; progress.classList.remove('show'); }
   });
 })();
