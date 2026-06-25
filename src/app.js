@@ -67,7 +67,7 @@ function resetTool(tool) {
     merge: 'btnMerge', split: 'btnSplit', compress: 'btnCompress',
     img2pdf: 'btnImg2Pdf', pdf2img: 'btnPdf2Img',
     rotate: 'btnRotate', watermark: 'btnWatermark',
-    reorder: 'btnReorder', encrypt: 'btnEncrypt', pdf2word: 'btnPdf2Word'
+    reorder: 'btnReorder', encrypt: 'btnEncrypt', pdf2word: 'btnPdf2Word', pagenumber: 'btnPageNumber'
   };
   const btn = document.getElementById(btnMap[tool]);
   if (btn) btn.disabled = true;
@@ -974,4 +974,97 @@ function renderFileList(tool, files, onRemove, onReorder) {
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#39;');
   }
+})();
+
+// ==================== 11. 添加页码 ====================
+
+(function() {
+  let pageNumFile = null;
+
+  setupFileInput('pagenumber', '.pdf', false, (files) => {
+    pageNumFile = files[0];
+    renderFileList('pagenumber', [pageNumFile], (idx) => {
+      pageNumFile = null;
+      document.getElementById('fileList-pagenumber').innerHTML = '';
+      document.getElementById('btnPageNumber').disabled = true;
+    });
+    document.getElementById('btnPageNumber').disabled = false;
+  });
+
+  document.getElementById('btnPageNumber').addEventListener('click', async () => {
+    if (!pageNumFile) return;
+    const btn = document.getElementById('btnPageNumber');
+    const progress = document.getElementById('progress-pagenumber');
+    const fill = document.getElementById('progressFill-pagenumber');
+    const result = document.getElementById('result-pagenumber');
+    const info = document.getElementById('resultInfo-pagenumber');
+
+    const position = document.getElementById('pageNumPosition').value;
+    const startNum = parseInt(document.getElementById('pageNumStart').value) || 1;
+    const fontSize = parseInt(document.getElementById('pageNumFontSize').value) || 12;
+    const format = document.getElementById('pageNumFormat').value;
+
+    btn.disabled = true;
+    progress.classList.add('show');
+    fill.style.width = '0%';
+
+    try {
+      const arr = await pageNumFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const totalPages = srcPdf.getPageCount();
+      const newPdf = await PDFLib.PDFDocument.create();
+      const copiedPages = await newPdf.copyPages(srcPdf, srcPdf.getPageIndices());
+      const font = await newPdf.embedFont(PDFLib.StandardFonts.Helvetica);
+
+      for (let i = 0; i < copiedPages.length; i++) {
+        const pg = newPdf.addPage(copiedPages[i]);
+        const [pw, ph] = pg.getSize();
+        const pageNum = startNum + i;
+
+        let text;
+        if (format === 'pageX') {
+          text = '第' + pageNum + '页';
+        } else if (format === 'X/Y') {
+          text = pageNum + ' / ' + (startNum + totalPages - 1);
+        } else {
+          text = String(pageNum);
+        }
+
+        const textWidth = font.widthOfTextAtSize(text, fontSize);
+        const margin = 36;
+        let x, y;
+
+        const posMap = {
+          'bottom-center': { x: (pw - textWidth) / 2, y: margin },
+          'bottom-right':  { x: pw - textWidth - margin, y: margin },
+          'top-center':    { x: (pw - textWidth) / 2, y: ph - margin - fontSize },
+          'top-right':     { x: pw - textWidth - margin, y: ph - margin - fontSize }
+        };
+
+        const coords = posMap[position] || posMap['bottom-center'];
+        x = coords.x;
+        y = coords.y;
+
+        pg.drawText(text, {
+          x, y,
+          size: fontSize,
+          font: font,
+          color: PDFLib.rgb(0.3, 0.3, 0.3)
+        });
+
+        fill.style.width = ((i + 1) / copiedPages.length * 100) + '%';
+      }
+
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      result.classList.add('show');
+      info.innerHTML = '已为 ' + totalPages + ' 页添加页码（起始 ' + startNum + '），输出 ' + formatSize(blob.size);
+      downloadBlob(blob, 'numbered.pdf');
+    } catch (err) {
+      alert('添加页码失败：' + err.message);
+    } finally {
+      btn.disabled = false;
+      progress.classList.remove('show');
+    }
+  });
 })();

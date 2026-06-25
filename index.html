@@ -501,6 +501,11 @@
       <h3>PDF 转 Word</h3>
       <p>将 PDF 转换为可编辑的 Word 文档</p>
     </div>
+    <div class="tool-card" data-tool="pagenumber">
+      <div class="tool-icon">🔢</div>
+      <h3>添加页码</h3>
+      <p>为 PDF 每页添加页码</p>
+    </div>
   </div>
 
   <!-- 工作区 - 合并 -->
@@ -789,6 +794,51 @@
       <div class="result-icon">🎉</div>
       <div>转换完成！</div>
       <div class="result-info" id="resultInfo-pdf2word"></div>
+    </div>
+  </div>
+
+  <!-- 工作区 - 添加页码 -->
+  <div class="workspace" id="workspace-pagenumber">
+    <div class="ws-title">添加页码</div>
+    <div class="ws-desc">为 PDF 的每一页添加页码，支持位置、格式、字号等自定义设置。</div>
+    <div class="upload-zone" id="dropZone-pagenumber">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-pagenumber" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-pagenumber"></div>
+    <div class="settings-row">
+      <label>页码位置：</label>
+      <select id="pageNumPosition" style="background:#1a1a2e;color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;">
+        <option value="bottom-center">底部居中</option>
+        <option value="bottom-right">底部靠右</option>
+        <option value="top-center">顶部居中</option>
+        <option value="top-right">顶部靠右</option>
+      </select>
+    </div>
+    <div class="settings-row">
+      <label>起始页码：</label>
+      <input type="number" id="pageNumStart" value="1" min="1" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;color:#e0e0e0;width:80px;text-align:center;font-size:14px;">
+      <label style="margin-left:16px;">字体大小：</label>
+      <input type="number" id="pageNumFontSize" value="12" min="6" max="48" style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;color:#e0e0e0;width:80px;text-align:center;font-size:14px;">
+    </div>
+    <div class="settings-row">
+      <label>页码格式：</label>
+      <select id="pageNumFormat" style="background:#1a1a2e;color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;">
+        <option value="pageX">第X页</option>
+        <option value="X/Y">X / Y</option>
+        <option value="X">X</option>
+      </select>
+    </div>
+    <div class="progress-bar" id="progress-pagenumber"><div class="progress-fill" id="progressFill-pagenumber" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnPageNumber" disabled>添加页码并下载</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-pagenumber">
+      <div class="result-icon">🎉</div>
+      <div>页码添加完成！</div>
+      <div class="result-info" id="resultInfo-pagenumber"></div>
     </div>
   </div>
 
