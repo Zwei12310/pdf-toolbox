@@ -41,10 +41,6 @@ document.querySelectorAll('.tool-card').forEach(card => {
 });
 
 function openTool(tool) {
-  if (tool === 'pdf2word') {
-    alert('功能开发中，即将上线');
-    return;
-  }
   currentTool = tool;
   document.getElementById('toolsGrid').style.display = 'none';
   document.querySelectorAll('.workspace').forEach(w => w.classList.remove('active'));
@@ -71,7 +67,7 @@ function resetTool(tool) {
     merge: 'btnMerge', split: 'btnSplit', compress: 'btnCompress',
     img2pdf: 'btnImg2Pdf', pdf2img: 'btnPdf2Img',
     rotate: 'btnRotate', watermark: 'btnWatermark',
-    reorder: 'btnReorder', encrypt: 'btnEncrypt'
+    reorder: 'btnReorder', encrypt: 'btnEncrypt', pdf2word: 'btnPdf2Word'
   };
   const btn = document.getElementById(btnMap[tool]);
   if (btn) btn.disabled = true;
@@ -845,4 +841,137 @@ function renderFileList(tool, files, onRemove, onReorder) {
     } catch (err) { alert('加密失败：' + err.message); }
     finally { btn.disabled = false; progress.classList.remove('show'); }
   });
+})();
+
+// ==================== 10. PDF 转 Word ====================
+
+(function() {
+  let pdf2wordFile = null;
+
+  setupFileInput('pdf2word', '.pdf', false, (files) => {
+    pdf2wordFile = files[0];
+    renderFileList('pdf2word', [pdf2wordFile], (idx) => { pdf2wordFile = null; document.getElementById('fileList-pdf2word').innerHTML = ''; document.getElementById('btnPdf2Word').disabled = true; });
+    document.getElementById('btnPdf2Word').disabled = false;
+  });
+
+  document.getElementById('btnPdf2Word').addEventListener('click', async () => {
+    if (!pdf2wordFile) return;
+    const btn = document.getElementById('btnPdf2Word');
+    const progress = document.getElementById('progress-pdf2word');
+    const fill = document.getElementById('progressFill-pdf2word');
+    const result = document.getElementById('result-pdf2word');
+    const info = document.getElementById('resultInfo-pdf2word');
+
+    btn.disabled = true;
+    progress.classList.add('show');
+    fill.style.width = '0%';
+
+    try {
+      const arr = await pdf2wordFile.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
+      const totalPages = pdfDoc.numPages;
+      const pageContents = [];
+
+      for (let i = 1; i <= totalPages; i++) {
+        const page = await pdfDoc.getPage(i);
+        const textContent = await page.getTextContent();
+        const items = textContent.items;
+
+        // 按 y 坐标降序排列（从上到下），同 y 按 x 升序（从左到右）
+        const sorted = [...items].sort((a, b) => {
+          const yDiff = b.transform[5] - a.transform[5];
+          if (Math.abs(yDiff) > 2) return yDiff;
+          return a.transform[4] - b.transform[4];
+        });
+
+        // 将文本项按行分组（y 坐标相近的属于同一行）
+        const lines = [];
+        let currentLine = { y: sorted.length > 0 ? sorted[0].transform[5] : 0, texts: [] };
+        for (const item of sorted) {
+          const str = item.str;
+          if (!str || !str.trim()) continue;
+          if (Math.abs(item.transform[5] - currentLine.y) > 3) {
+            if (currentLine.texts.length > 0) lines.push(currentLine);
+            currentLine = { y: item.transform[5], texts: [] };
+          }
+          currentLine.texts.push(str);
+        }
+        if (currentLine.texts.length > 0) lines.push(currentLine);
+
+        // 将行合并为段落（检测行间距变化判断段落边界）
+        const paragraphs = [];
+        let currentPara = [];
+        let prevY = null;
+        let prevLineHeight = null;
+
+        for (const line of lines) {
+          const lineText = line.texts.join(' ');
+          if (prevY !== null) {
+            const gap = prevY - line.y;
+            if (prevLineHeight && gap > prevLineHeight * 1.6) {
+              paragraphs.push(currentPara.join(' '));
+              currentPara = [];
+            }
+          }
+          currentPara.push(lineText);
+          prevLineHeight = prevY !== null ? prevY - line.y : null;
+          prevY = line.y;
+        }
+        if (currentPara.length > 0) paragraphs.push(currentPara.join(' '));
+
+        pageContents.push({ pageNum: i, paragraphs });
+        fill.style.width = (i / totalPages * 100) + '%';
+      }
+
+      // 构建 HTML 文档
+      const baseName = pdf2wordFile.name.replace(/\.pdf$/i, '');
+      const htmlParts = [];
+      htmlParts.push('<html xmlns:o="urn:schemas-microsoft-com:office:office"');
+      htmlParts.push(' xmlns:w="urn:schemas-microsoft-com:office:word"');
+      htmlParts.push(' xmlns="http://www.w3.org/TR/REC-html40">');
+      htmlParts.push('<head><meta charset="UTF-8">');
+      htmlParts.push('<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">');
+      htmlParts.push('<title>' + baseName + '</title>');
+      htmlParts.push('<style>');
+      htmlParts.push('  body { font-family: "Microsoft YaHei", "SimSun", sans-serif; font-size: 14px; line-height: 1.8; color: #333; padding: 40px; }');
+      htmlParts.push('  h2 { font-size: 18px; border-bottom: 2px solid #4472C4; padding-bottom: 6px; margin-top: 24px; }');
+      htmlParts.push('  p { margin: 8px 0; text-indent: 2em; }');
+      htmlParts.push('</style></head><body>');
+      htmlParts.push('<h1 style="text-align:center;">' + baseName + '</h1>');
+
+      for (const pc of pageContents) {
+        htmlParts.push('<h2>第 ' + pc.pageNum + ' 页</h2>');
+        for (const para of pc.paragraphs) {
+          htmlParts.push('<p>' + escapeHtml(para) + '</p>');
+        }
+        if (pc.pageNum < totalPages) {
+          htmlParts.push('<br style="page-break-after:always;">');
+        }
+      }
+
+      htmlParts.push('</body></html>');
+
+      const htmlContent = htmlParts.join('\n');
+      const blob = new Blob(['\ufeff' + htmlContent], { type: 'application/msword;charset=UTF-8' });
+      const filename = baseName + '.doc';
+
+      result.classList.add('show');
+      info.innerHTML = `已将 ${totalPages} 页转换为 Word 文档，输出 ${formatSize(blob.size)}`;
+      downloadBlob(blob, filename);
+    } catch (err) {
+      alert('转换失败：' + err.message);
+    } finally {
+      btn.disabled = false;
+      progress.classList.remove('show');
+    }
+  });
+
+  function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
 })();

@@ -769,6 +769,28 @@
     </div>
   </div>
 
+  <!-- 工作区 - PDF 转 Word -->
+  <div class="workspace" id="workspace-pdf2word">
+    <div class="ws-title">PDF 转 Word</div>
+    <div class="ws-desc">将 PDF 文档转换为可编辑的 Word 文档（.doc），保留文本内容和基本排版。</div>
+    <div class="upload-zone" id="dropZone-pdf2word">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-pdf2word" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-pdf2word"></div>
+    <div class="progress-bar" id="progress-pdf2word"><div class="progress-fill" id="progressFill-pdf2word" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnPdf2Word" disabled>开始转换</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-pdf2word">
+      <div class="result-icon">🎉</div>
+      <div>转换完成！</div>
+      <div class="result-info" id="resultInfo-pdf2word"></div>
+    </div>
+  </div>
+
 </div>
 
 <div class="support-section">
@@ -776,19 +798,11 @@
   <p class="support-desc">如果这个工具帮到了你，欢迎支持我们继续开发</p>
   <div class="support-qrcodes">
     <div class="support-qr-item">
-      <div class="support-qr-placeholder">
-        <div class="qr-icon">💚</div>
-        <div>微信赞赏码</div>
-        <div style="margin-top:4px;font-size:10px;">（替换为真实二维码）</div>
-      </div>
+      <img src="images/wechat-qr.png" alt="微信赞赏码" style="width:160px;height:160px;border-radius:10px;" onerror="this.parentElement.innerHTML='<div class=\'support-qr-placeholder\'><div class=\'qr-icon\'>💚</div><div>微信赞赏码</div><div style=\'margin-top:4px;font-size:10px;\'>请放入 images/wechat-qr.png</div></div><span>微信赞赏码</span>'">
       <span>微信赞赏码</span>
     </div>
     <div class="support-qr-item">
-      <div class="support-qr-placeholder">
-        <div class="qr-icon">💙</div>
-        <div>支付宝收款码</div>
-        <div style="margin-top:4px;font-size:10px;">（替换为真实二维码）</div>
-      </div>
+      <img src="images/alipay-qr.png" alt="支付宝收款码" style="width:160px;height:160px;border-radius:10px;" onerror="this.parentElement.innerHTML='<div class=\'support-qr-placeholder\'><div class=\'qr-icon\'>💙</div><div>支付宝收款码</div><div style=\'margin-top:4px;font-size:10px;\'>请放入 images/alipay-qr.png</div></div><span>支付宝收款码</span>'">
       <span>支付宝收款码</span>
     </div>
   </div>
