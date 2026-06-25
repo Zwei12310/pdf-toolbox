@@ -29,7 +29,7 @@
 ### 方式二：GitHub Pages（免费）
 1. 上传到 GitHub 仓库
 2. Settings → Pages → Source 选 main 分支 → Save
-3. 访问 `https://你的用户名.github.io/仓库名`
+3. 访问 `https://zwei12310.github.io/pdf-toolbox/`
 
 ### 方式三：任意静态服务器
 直接把 index.html 和 src/ 放到 Nginx / Apache / OSS 即可。
