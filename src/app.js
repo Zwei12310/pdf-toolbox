@@ -6,6 +6,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs
 // ==================== 通用工具函数 ====================
 
 const MB = 1024 * 1024;
+const LARGE_FILE_THRESHOLD = 50 * MB; // 50MB 以上视为大文件
 
 function formatSize(bytes) {
   if (bytes < 1024) return bytes + ' B';
@@ -21,6 +22,34 @@ function downloadBlob(blob, filename) {
   document.body.appendChild(a);
   a.click();
   setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+}
+
+// 大文件分片优化 —— 检测与提示
+function checkLargeFiles(files, toolLabel) {
+  const largeFiles = files.filter(f => f.size > LARGE_FILE_THRESHOLD);
+  if (largeFiles.length > 0) {
+    const totalSize = largeFiles.reduce((s, f) => s + f.size, 0);
+    const names = largeFiles.map(f => f.name).join('、');
+    const estTime = Math.max(3, Math.ceil(totalSize / MB / 8));
+    return confirm(
+      '检测到大文件（' + names + '），总大小 ' + formatSize(totalSize) + '。\n\n' +
+      '处理大文件时' + toolLabel + '预计需要 ' + estTime + ' 秒以上，期间页面可能短暂无响应。\n' +
+      '建议关闭其他标签页以释放内存，处理完成前请勿关闭或刷新页面。\n\n' +
+      '是否继续？'
+    );
+  }
+  return true;
+}
+
+// 大文件分片优化 —— 让出主线程，避免长时间阻塞 UI
+function yieldToBrowser() {
+  return new Promise(resolve => {
+    if (typeof requestAnimationFrame !== 'undefined') {
+      requestAnimationFrame(() => setTimeout(resolve, 0));
+    } else {
+      setTimeout(resolve, 10);
+    }
+  });
 }
 
 function downloadDataUrl(dataUrl, filename) {
@@ -67,7 +96,7 @@ function resetTool(tool) {
     merge: 'btnMerge', split: 'btnSplit', compress: 'btnCompress',
     img2pdf: 'btnImg2Pdf', pdf2img: 'btnPdf2Img',
     rotate: 'btnRotate', watermark: 'btnWatermark',
-    reorder: 'btnReorder', encrypt: 'btnEncrypt', pdf2word: 'btnPdf2Word', pagenumber: 'btnPageNumber'
+    reorder: 'btnReorder', encrypt: 'btnEncrypt', pdf2word: 'btnPdf2Word', pagenumber: 'btnPageNumber', ocr: 'btnOcr', deletepages: 'btnDeletePages'
   };
   const btn = document.getElementById(btnMap[tool]);
   if (btn) btn.disabled = true;
@@ -164,6 +193,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     fill.style.width = '0%';
 
     try {
+      if (!checkLargeFiles(mergeFiles, '合并PDF')) return;
+
       const mergedPdf = await PDFLib.PDFDocument.create();
 
       for (let i = 0; i < mergeFiles.length; i++) {
@@ -172,6 +203,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
         const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
         pages.forEach(p => mergedPdf.addPage(p));
         fill.style.width = ((i + 1) / mergeFiles.length * 100) + '%';
+        await yieldToBrowser();
       }
 
       const bytes = await mergedPdf.save();
@@ -333,6 +365,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     fill.style.width = '0%';
 
     try {
+      if (!checkLargeFiles([compressFile], '压缩PDF')) return;
+
       const arr = await compressFile.arrayBuffer();
       const pdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
       const totalPages = pdf.getPageCount();
@@ -370,6 +404,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
         });
 
         fill.style.width = (i / totalPages * 100) + '%';
+        await yieldToBrowser();
       }
 
       const bytes = await newPdf.save();
@@ -531,6 +566,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     fill.style.width = '0%';
 
     try {
+      if (!checkLargeFiles([pdf2imgFile], 'PDF转图片')) return;
+
       const arr = await pdf2imgFile.arrayBuffer();
       const pdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
       const totalPages = pdfDoc.numPages;
@@ -548,7 +585,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
         downloadDataUrl(canvas.toDataURL('image/png'), `${baseName}-page${i}.png`);
 
         fill.style.width = (i / totalPages * 100) + '%';
-        await new Promise(r => setTimeout(r, 200));
+        await yieldToBrowser();
       }
 
       result.classList.add('show');
@@ -683,6 +720,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     const info = document.getElementById('resultInfo-watermark');
     btn.disabled = true; progress.classList.add('show'); fill.style.width = '0%';
     try {
+      if (!checkLargeFiles([watermarkFile], '添加水印')) return;
+
       const arr = await watermarkFile.arrayBuffer();
       const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
       const totalPages = srcPdf.getPageCount();
@@ -708,6 +747,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
           pg.drawImage(wmImg, { x: pw / 2 - iw / 2, y: ph / 2 - ih / 2, width: iw, height: ih, opacity: opacity, rotate: angleRad });
         }
         fill.style.width = ((i + 1) / copiedPages.length * 100) + '%';
+        await yieldToBrowser();
       }
       const bytes = await newPdf.save();
       const blob = new Blob([bytes], { type: 'application/pdf' });
@@ -867,6 +907,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     fill.style.width = '0%';
 
     try {
+      if (!checkLargeFiles([pdf2wordFile], 'PDF转Word')) return;
+
       const arr = await pdf2wordFile.arrayBuffer();
       const pdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
       const totalPages = pdfDoc.numPages;
@@ -921,6 +963,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
 
         pageContents.push({ pageNum: i, paragraphs });
         fill.style.width = (i / totalPages * 100) + '%';
+        await yieldToBrowser();
       }
 
       // 构建 HTML 文档
@@ -1009,6 +1052,8 @@ function renderFileList(tool, files, onRemove, onReorder) {
     fill.style.width = '0%';
 
     try {
+      if (!checkLargeFiles([pageNumFile], '添加页码')) return;
+
       const arr = await pageNumFile.arrayBuffer();
       const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
       const totalPages = srcPdf.getPageCount();
@@ -1053,6 +1098,7 @@ function renderFileList(tool, files, onRemove, onReorder) {
         });
 
         fill.style.width = ((i + 1) / copiedPages.length * 100) + '%';
+        await yieldToBrowser();
       }
 
       const bytes = await newPdf.save();
@@ -1062,6 +1108,227 @@ function renderFileList(tool, files, onRemove, onReorder) {
       downloadBlob(blob, 'numbered.pdf');
     } catch (err) {
       alert('添加页码失败：' + err.message);
+    } finally {
+      btn.disabled = false;
+      progress.classList.remove('show');
+    }
+  });
+})();
+
+// ==================== 12. 图片 OCR 识别 ====================
+
+(function() {
+  let ocrFile = null;
+
+  setupFileInput('ocr', '.png,.jpg,.jpeg,.webp,.bmp', false, (files) => {
+    ocrFile = files[0];
+    renderFileList('ocr', [ocrFile], (idx) => {
+      ocrFile = null;
+      document.getElementById('fileList-ocr').innerHTML = '';
+      document.getElementById('btnOcr').disabled = true;
+    });
+    document.getElementById('btnOcr').disabled = false;
+  });
+
+  document.getElementById('btnOcr').addEventListener('click', async () => {
+    if (!ocrFile) return;
+    const btn = document.getElementById('btnOcr');
+    const progress = document.getElementById('progress-ocr');
+    const fill = document.getElementById('progressFill-ocr');
+    const result = document.getElementById('result-ocr');
+    const info = document.getElementById('resultInfo-ocr');
+    const preview = document.getElementById('ocrTextPreview');
+    const btnCopy = document.getElementById('btnCopyOcr');
+    const lang = document.getElementById('ocrLang').value;
+
+    btn.disabled = true;
+    progress.classList.add('show');
+    fill.style.width = '10%';
+
+    try {
+      const worker = await Tesseract.createWorker(lang, 1, {
+        logger: (m) => {
+          if (m.status === 'recognizing text') {
+            fill.style.width = Math.min(10 + (m.progress || 0) * 85, 95) + '%';
+          }
+        }
+      });
+
+      const { data: { text } } = await worker.recognize(ocrFile);
+      await worker.terminate();
+
+      fill.style.width = '100%';
+
+      const trimmed = text.trim();
+      if (!trimmed) {
+        info.innerHTML = '未能识别到文字，请确认图片中包含清晰文字。';
+        result.classList.add('show');
+        return;
+      }
+
+      const baseName = ocrFile.name.replace(/\.(png|jpg|jpeg|webp|bmp)$/i, '');
+      const blob = new Blob(['\ufeff' + trimmed], { type: 'text/plain;charset=UTF-8' });
+      const filename = baseName + '_OCR.txt';
+
+      result.classList.add('show');
+      info.innerHTML = '识别完成，共 ' + trimmed.length + ' 个字符，已自动下载 TXT 文件';
+      preview.textContent = trimmed;
+      preview.style.display = 'block';
+      btnCopy.style.display = 'inline-flex';
+
+      downloadBlob(blob, filename);
+    } catch (err) {
+      if (err.message && err.message.includes('Failed to fetch')) {
+        alert('语言包下载失败，请检查网络连接后重试。');
+      } else {
+        alert('OCR 识别失败：' + (err.message || '未知错误'));
+      }
+    } finally {
+      btn.disabled = false;
+      progress.classList.remove('show');
+    }
+  });
+
+  document.getElementById('btnCopyOcr').addEventListener('click', () => {
+    const preview = document.getElementById('ocrTextPreview');
+    navigator.clipboard.writeText(preview.textContent).then(() => {
+      const btnCopy = document.getElementById('btnCopyOcr');
+      const orig = btnCopy.textContent;
+      btnCopy.textContent = '已复制！';
+      setTimeout(() => { btnCopy.textContent = orig; }, 1500);
+    }).catch(() => {
+      alert('复制失败，请手动选中文字复制');
+    });
+  });
+})();
+
+// ==================== 13. 删除页面 PDF ====================
+
+(function() {
+  let deletePagesFile = null;
+  let deletePagesPdfDoc = null;
+  let deleteSelectedPages = new Set();
+
+  setupFileInput('deletepages', '.pdf', false, async (files) => {
+    deletePagesFile = files[0];
+    deleteSelectedPages = new Set();
+    renderFileList('deletepages', [deletePagesFile], (idx) => {
+      deletePagesFile = null;
+      deletePagesPdfDoc = null;
+      deleteSelectedPages = new Set();
+      document.getElementById('fileList-deletepages').innerHTML = '';
+      document.getElementById('btnDeletePages').disabled = true;
+    });
+    document.getElementById('btnDeletePages').disabled = true;
+    document.getElementById('deletePageRange').value = '';
+    document.getElementById('pagePreview-deletepages').innerHTML = '';
+
+    const arr = await deletePagesFile.arrayBuffer();
+    deletePagesPdfDoc = await pdfjsLib.getDocument({ data: arr }).promise;
+    const preview = document.getElementById('pagePreview-deletepages');
+
+    for (let i = 1; i <= deletePagesPdfDoc.numPages; i++) {
+      const page = await deletePagesPdfDoc.getPage(i);
+      const scale = 0.3;
+      const viewport = page.getViewport({ scale });
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      canvas.dataset.page = i;
+      canvas.title = '第 ' + i + ' 页';
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+      canvas.addEventListener('click', () => {
+        canvas.classList.toggle('selected');
+        if (canvas.classList.contains('selected')) {
+          deleteSelectedPages.add(i);
+        } else {
+          deleteSelectedPages.delete(i);
+        }
+        updateDeletePagesBtn();
+      });
+      preview.appendChild(canvas);
+    }
+  });
+
+  function parseDeletePageRange(input, maxPage) {
+    const pages = new Set();
+    const parts = input.split(',').map(s => s.trim()).filter(Boolean);
+    for (const part of parts) {
+      if (part.includes('-')) {
+        const [start, end] = part.split('-').map(Number);
+        if (start && end) {
+          for (let i = Math.max(1, start); i <= Math.min(maxPage, end); i++) pages.add(i);
+        }
+      } else {
+        const n = parseInt(part);
+        if (n >= 1 && n <= maxPage) pages.add(n);
+      }
+    }
+    return pages;
+  }
+
+  function updateDeletePagesBtn() {
+    const rangeVal = document.getElementById('deletePageRange').value.trim();
+    document.getElementById('btnDeletePages').disabled = !(deleteSelectedPages.size > 0 || rangeVal);
+  }
+
+  document.getElementById('deletePageRange').addEventListener('input', updateDeletePagesBtn);
+
+  document.getElementById('btnDeletePages').addEventListener('click', async () => {
+    if (!deletePagesFile) return;
+    const btn = document.getElementById('btnDeletePages');
+    const progress = document.getElementById('progress-deletepages');
+    const fill = document.getElementById('progressFill-deletepages');
+    const result = document.getElementById('result-deletepages');
+    const info = document.getElementById('resultInfo-deletepages');
+
+    btn.disabled = true;
+    progress.classList.add('show');
+    fill.style.width = '0%';
+
+    try {
+      const arr = await deletePagesFile.arrayBuffer();
+      const srcPdf = await PDFLib.PDFDocument.load(arr, { ignoreEncryption: true });
+      const totalPages = srcPdf.getPageCount();
+
+      // 合并点击选中的页和范围输入
+      let pagesToDelete = new Set(deleteSelectedPages);
+      const rangeVal = document.getElementById('deletePageRange').value.trim();
+      if (rangeVal) {
+        parseDeletePageRange(rangeVal, totalPages).forEach(p => pagesToDelete.add(p));
+      }
+
+      if (pagesToDelete.size === 0) {
+        alert('请选择要删除的页面');
+        return;
+      }
+
+      if (pagesToDelete.size >= totalPages) {
+        alert('至少保留一页');
+        return;
+      }
+
+      // 计算保留的页面索引（0-based）
+      const keepIndices = [];
+      for (let i = 0; i < totalPages; i++) {
+        if (!pagesToDelete.has(i + 1)) {
+          keepIndices.push(i);
+        }
+      }
+
+      const newPdf = await PDFLib.PDFDocument.create();
+      const copiedPages = await newPdf.copyPages(srcPdf, keepIndices);
+      copiedPages.forEach(p => newPdf.addPage(p));
+
+      fill.style.width = '100%';
+      const bytes = await newPdf.save();
+      const blob = new Blob([bytes], { type: 'application/pdf' });
+      result.classList.add('show');
+      info.innerHTML = '已删除 ' + pagesToDelete.size + ' 页，保留 ' + keepIndices.length + ' 页（共 ' + totalPages + ' 页），输出 ' + formatSize(blob.size);
+      downloadBlob(blob, 'delete_pages_result.pdf');
+    } catch (err) {
+      alert('删除失败：' + err.message);
     } finally {
       btn.disabled = false;
       progress.classList.remove('show');

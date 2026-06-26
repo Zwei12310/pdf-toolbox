@@ -421,6 +421,116 @@
       color: #888;
     }
 
+    /* 快速下单引导区 */
+    .order-guide {
+      background: linear-gradient(135deg, rgba(102,126,234,0.08), rgba(118,75,162,0.08));
+      border: 1px solid rgba(102,126,234,0.25);
+      border-radius: 14px;
+      padding: 36px 32px;
+      margin-bottom: 32px;
+      text-align: center;
+    }
+    .order-guide h2 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #667eea, #e94560);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .order-guide .guide-subtitle {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 28px;
+    }
+    .guide-steps {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .guide-step {
+      flex: 1;
+      min-width: 140px;
+      max-width: 200px;
+      text-align: center;
+    }
+    .guide-step .step-num {
+      display: inline-flex;
+      width: 40px;
+      height: 40px;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+    .guide-step h4 {
+      font-size: 15px;
+      margin-bottom: 6px;
+    }
+    .guide-step p {
+      font-size: 12px;
+      color: #888;
+      line-height: 1.6;
+    }
+    .guide-price-table {
+      display: inline-block;
+      margin: 0 auto 24px;
+      border-collapse: collapse;
+    }
+    .guide-price-table th, .guide-price-table td {
+      padding: 8px 18px;
+      font-size: 13px;
+      text-align: left;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .guide-price-table th {
+      color: #888;
+      font-weight: 600;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .guide-price-table .price-highlight {
+      color: #667eea;
+      font-weight: 700;
+    }
+    .guide-price-table .price-promo {
+      color: #e94560;
+      font-weight: 700;
+    }
+    .guide-promo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #e94560, #ff6b6b);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 20px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.7; }
+    }
+    .guide-contact {
+      margin-top: 24px;
+      padding: 16px 20px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 10px;
+      font-size: 13px;
+      color: #aaa;
+    }
+    .guide-contact strong {
+      color: #667eea;
+    }
+
     .footer {
       text-align: center;
       padding: 40px 20px;
@@ -428,9 +538,55 @@
       font-size: 12px;
     }
     .footer a { color: #667eea; text-decoration: none; }
+    .free-banner {
+      background: linear-gradient(135deg, #e74c3c, #c0392b, #e74c3c);
+      background-size: 200% 200%;
+      animation: bannerGlow 2s ease-in-out infinite;
+      color: #fff;
+      text-align: center;
+      padding: 10px 20px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      position: sticky;
+      top: 0;
+      z-index: 999;
+      box-shadow: 0 2px 12px rgba(231,76,60,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .free-banner .banner-tag {
+      background: #fff;
+      color: #e74c3c;
+      padding: 2px 10px;
+      border-radius: 3px;
+      font-size: 13px;
+      animation: bannerPulse 1.5s ease-in-out infinite;
+    }
+    .free-banner .banner-cta {
+      color: #ffeaa7;
+      font-size: 14px;
+    }
+    @keyframes bannerGlow {
+      0%, 100% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+    }
+    @keyframes bannerPulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
   </style>
 </head>
 <body>
+
+<div class="free-banner">
+  <span class="banner-tag">限时免费</span>
+  6月26-30日所有PDF处理免费！
+  <span class="banner-cta">→ 加微信下单，2小时内出件 ←</span>
+</div>
 
 <header class="header">
   <div style="display:flex;align-items:center;">
@@ -505,6 +661,54 @@
       <div class="tool-icon">🔢</div>
       <h3>添加页码</h3>
       <p>为 PDF 每页添加页码</p>
+    </div>
+    <div class="tool-card premium" data-tool="ocr">
+      <div class="premium-tag">高级功能</div>
+      <div class="tool-icon">🔍</div>
+      <h3>图片 OCR 识别</h3>
+      <p>上传图片，提取其中的文字</p>
+    </div>
+    <div class="tool-card" data-tool="deletepages">
+      <div class="tool-icon">🗑️</div>
+      <h3>删除页面</h3>
+      <p>移除 PDF 中的指定页面</p>
+    </div>
+  </div>
+
+  <!-- 快速下单引导区 -->
+  <div class="order-guide">
+    <div class="guide-promo-badge">首单¥1体验 限时促销中</div>
+    <h2>快速下单</h2>
+    <p class="guide-subtitle">三步完成 PDF 处理，最快 30 分钟出件</p>
+    <div class="guide-steps">
+      <div class="guide-step">
+        <div class="step-num">1</div>
+        <h4>选择服务</h4>
+        <p>从上方的13个工具中选择你需要的服务，或直接描述需求</p>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">2</div>
+        <h4>发送文件</h4>
+        <p>通过闲鱼聊天发送 PDF文件，说明处理要求</p>
+      </div>
+      <div class="guide-step">
+        <div class="step-num">3</div>
+        <h4>微信支付</h4>
+        <p>扫描下方赞赏码支付，收到文件后2小时内出件</p>
+      </div>
+    </div>
+    <table class="guide-price-table">
+      <tr><th>服务项目</th><th>原价</th><th>促销价</th></tr>
+      <tr><td>首单体验（任选一项）</td><td>—</td><td class="price-promo">¥1</td></tr>
+      <tr><td>PDF合并/分割/旋转/排序</td><td>¥5</td><td class="price-highlight">¥2.5</td></tr>
+      <tr><td>PDF压缩/水印/加密/页码</td><td>¥3</td><td class="price-highlight">¥1.5</td></tr>
+      <tr><td>PDF删除页面</td><td>¥3</td><td class="price-highlight">¥1.5</td></tr>
+      <tr><td>PDF转Word</td><td>¥15</td><td class="price-promo">¥5</td></tr>
+      <tr><td>图片OCR识别</td><td>¥5</td><td class="price-promo">¥2.5</td></tr>
+      <tr><td>批量处理（10文件内）</td><td>¥15</td><td class="price-highlight">¥7.5</td></tr>
+    </table>
+    <div class="guide-contact">
+      下单方式：<strong>闲鱼搜索"PDF处理"</strong> 找到我们的商品 → 拍下后发送文件 → 或直接扫描下方赞赏码付款后联系处理
     </div>
   </div>
 
@@ -842,6 +1046,69 @@
     </div>
   </div>
 
+  <!-- 工作区 - 删除页面 -->
+  <div class="workspace" id="workspace-deletepages">
+    <div class="ws-title">删除页面 PDF</div>
+    <div class="ws-desc">选择要删除的页面（可点击选中或输入页码范围），其余页面保留</div>
+    <div class="upload-zone" id="dropZone-deletepages">
+      <div class="upload-icon">📂</div>
+      <p>拖拽 PDF 文件到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-deletepages" accept=".pdf" hidden>
+    </div>
+    <div class="file-list" id="fileList-deletepages"></div>
+    <div class="settings-row">
+      <label>删除页码（逗号分隔，如 1,3,5-8）：</label>
+      <input type="text" id="deletePageRange" placeholder="例如：1,3,5-8" style="width:180px;">
+    </div>
+    <div class="page-preview" id="pagePreview-deletepages"></div>
+    <div class="progress-bar" id="progress-deletepages"><div class="progress-fill" id="progressFill-deletepages" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnDeletePages" disabled>删除并下载</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-deletepages">
+      <div class="result-icon">🎉</div>
+      <div>删除完成！</div>
+      <div class="result-info" id="resultInfo-deletepages"></div>
+    </div>
+  </div>
+
+  <!-- 工作区 - 图片 OCR -->
+  <div class="workspace" id="workspace-ocr">
+    <div class="ws-title">图片 OCR 识别</div>
+    <div class="ws-desc">上传图片（PNG/JPG），自动识别并提取其中的文字，导出为 TXT 文本文件。支持中英文混合识别。</div>
+    <div class="upload-zone" id="dropZone-ocr">
+      <div class="upload-icon">📂</div>
+      <p>拖拽图片到此处，或 <span class="highlight">点击选择文件</span></p>
+      <input type="file" id="fileInput-ocr" accept=".png,.jpg,.jpeg,.webp,.bmp" hidden>
+    </div>
+    <div class="file-list" id="fileList-ocr"></div>
+    <div class="settings-row">
+      <label>识别语言：</label>
+      <select id="ocrLang" style="background:#1a1a2e;color:#e0e0e0;border:1px solid rgba(255,255,255,0.12);border-radius:6px;padding:6px 12px;">
+        <option value="chi_sim+eng">中文简体 + 英文</option>
+        <option value="chi_sim">仅中文简体</option>
+        <option value="eng">仅英文</option>
+        <option value="chi_sim+eng+jpn">中日英混合</option>
+      </select>
+    </div>
+    <div class="settings-row" style="color:#888;font-size:12px;">
+      提示：首次识别需下载语言包（约10-20MB），请耐心等待。识别图片建议清晰、文字端正。
+    </div>
+    <div class="progress-bar" id="progress-ocr"><div class="progress-fill" id="progressFill-ocr" style="width:0%"></div></div>
+    <div class="btn-area">
+      <button class="btn btn-primary" id="btnOcr" disabled>开始识别</button>
+      <button class="btn btn-secondary" onclick="backToTools()">返回</button>
+    </div>
+    <div class="result-zone" id="result-ocr">
+      <div class="result-icon">🎉</div>
+      <div>识别完成！</div>
+      <div class="result-info" id="resultInfo-ocr"></div>
+      <div style="margin-top:12px;text-align:left;max-height:300px;overflow-y:auto;background:rgba(0,0,0,0.2);border-radius:8px;padding:16px;font-size:13px;white-space:pre-wrap;line-height:1.6;display:none;" id="ocrTextPreview"></div>
+      <button class="btn btn-secondary" id="btnCopyOcr" style="margin-top:12px;display:none;">复制文字到剪贴板</button>
+    </div>
+  </div>
+
 </div>
 
 <div class="support-section">
@@ -866,6 +1133,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
 <script src="src/app.js"></script>
 </body>
 </html>
